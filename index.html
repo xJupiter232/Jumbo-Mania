@@ -156,7 +156,7 @@
         pokazListePozycji();
         zapiszSesje();
       } else {
-        pokazPowiadomienie("Wpisz poprawną ilość sztuk większą niż 0.");
+        pokazPowiadomienie("Wpisz poprawny numer orderu większy niż 0.");
       }
     }
 
@@ -189,7 +189,7 @@
 
     function zapiszWynik() {
       if (pozycje.length === 0) {
-        pokazPowiadomienie("Dodaj przynajmniej jedną sztukę.");
+        pokazPowiadomienie("Dodaj przynajmniej jeden order.");
         return;
       }
 
@@ -198,7 +198,7 @@
       const wynikDiv = document.getElementById("wynik");
       wynikDiv.style.display = "block";
       wynikDiv.style.backgroundColor = "#d4edda";
-      wynikDiv.innerHTML = `🔢 <strong>Suma sztuk:</strong> ${suma}`;
+      wynikDiv.innerHTML = `🔢 <strong>Suma orderów:</strong> ${suma}`;
 
       const teraz = new Date();
       const data = teraz.toLocaleDateString("pl-PL");
@@ -429,3 +429,4 @@
   </script>
 </body>
 </html>
+
