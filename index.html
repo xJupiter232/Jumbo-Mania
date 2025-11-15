@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Kalkulator Jumbo</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Kalkulator sztuk" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f2f2f2;
+      max-width: 480px;
+      margin: auto;
+    }
+    h1 { text-align: center; }
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 15px;
+      background-color: #007aff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover { background-color: #005bb5; }
+    .przyciski-order {
+      display: flex;
+      gap: 10px;
+    }
+    .przyciski-order button {
+      flex: 1;
+      margin-top: 10px;
+    }
+    #listaPozycji,
+    #wynik,
+    #historia {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      display: none;
+    }
+    #powiadomienie {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #007aff;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      text-align: center;
+      animation: fadein 0.3s ease, fadeout 0.3s ease 2.7s;
+    }
+    @keyframes fadein {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes fadeout {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>📦 Kalkulator Jumbo</h1>
+
+    <section id="formularz">
+      <label for="nowaIlosc">Dodaj order:</label>
+      <input
+        type="tel"
+        id="nowaIlosc"
+        placeholder="np. 124"
+        inputmode="numeric"
+        pattern="[0-9]*"
+      />
+
+      <div class="przyciski-order">
+        <button onclick="dodajPozycje()">Dodaj order</button>
+        <button onclick="usunOstatniaPozycje()">Usuń order</button>
+      </div>
+
+      <div id="listaPozycji"></div>
+
+      <button onclick="zapiszWynik()">Zapisz wynik</button>
+      <button onclick="wyczysc()">Wyczyść dane</button>
+      <button onclick="usunHistorie()">Usuń historię</button>
+      <button onclick="kopiujHistorie()">Kopiuj historię</button>
+    </section>
+
+    <section id="wynik"></section>
+    <section id="historia"></section>
+  </main>
+
+  <div id="powiadomienie" style="display:none;"></div>
+
+  <script>
+    let pozycje = [];
+    let historiaList = [];
+
+    window.onload = () => {
+      const saved = localStorage.getItem("sztukiHistoria");
+      if (saved) {
+        try {
+          historiaList = JSON.parse(saved);
+          pokazHistorie();
+        } catch (e) {
+          console.error("Błąd parsowania historii:", e);
+        }
+      }
+      wczytajSesje();
+    };
+
+    function pokazPowiadomienie(tresc) {
+      const div = document.getElementById("powiadomienie");
+      div.textContent = tresc;
+      div.style.display = "block";
+      div.style.animation = "none";
+      div.offsetHeight;
+      div.style.animation = "fadein 0.3s ease, fadeout 0.3s ease 2.7s";
+      setTimeout(() => (div.style.display = "none"), 3000);
+    }
+
+    function dodajPozycje() {
+      const input = document.getElementById("nowaIlosc");
+      const wartosc = parseFloat(input.value.trim().replace(",", "."));
+
+      if (!isNaN(wartosc) && wartosc > 0) {
+        pozycje.push(wartosc);
+        input.value = "";
+        pokazListePozycji();
+        zapiszSesje();
+      } else {
+        pokazPowiadomienie("Wpisz poprawną ilość sztuk większą niż 0.");
+      }
+    }
+
+    function usunOstatniaPozycje() {
+      if (pozycje.length === 0) {
+        pokazPowiadomienie("Brak pozycji do usunięcia.");
+        return;
+      }
+      pozycje.pop();
+      pokazListePozycji();
+      zapiszSesje();
+    }
+
+    function pokazListePozycji() {
+      const div = document.getElementById("listaPozycji");
+      if (pozycje.length === 0) {
+        div.style.display = "none";
+        div.innerHTML = "";
+        return;
+      }
+
+      const suma = pozycje.reduce((a, b) => a + b, 0);
+      const lista = pozycje.join(", ");
+
+      div.style.display = "block";
+      let html = `<strong>📦 Ordery:</strong><br>${lista}<br>`;
+      html += `<strong>🔢 Suma:</strong> ${suma}`;
+      div.innerHTML = html;
+    }
+
+    function zapiszWynik() {
+      if (pozycje.length === 0) {
+        pokazPowiadomienie("Dodaj przynajmniej jedną sztukę.");
+        return;
+      }
+
+      const suma = pozycje.reduce((a, b) => a + b, 0);
+
+      const wynikDiv = document.getElementById("wynik");
+      wynikDiv.style.display = "block";
+      wynikDiv.style.backgroundColor = "#d4edda";
+      wynikDiv.innerHTML = `🔢 <strong>Suma sztuk:</strong> ${suma}`;
+
+      const teraz = new Date();
+      const data = teraz.toLocaleDateString("pl-PL");
+      const godzina = teraz.toLocaleTimeString("pl-PL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // 🔽 TERAZ zapisujemy pełne dane: data, godzina, suma, lista ilości
+      const entry = {
+        data,
+        godzina,
+        suma,
+        pozycje: [...pozycje],
+      };
+
+      historiaList.unshift(entry);
+      try {
+        localStorage.setItem("sztukiHistoria", JSON.stringify(historiaList));
+      } catch (e) {
+        console.error("Błąd zapisu historii:", e);
+      }
+
+      pokazHistorie();
+      pokazPowiadomienie("Wynik zapisany w historii.");
+    }
+
+    function pokazHistorie() {
+      const historiaDiv = document.getElementById("historia");
+      if (!historiaList || historiaList.length === 0) {
+        historiaDiv.style.display = "none";
+        historiaDiv.innerHTML = "";
+        return;
+      }
+
+      historiaDiv.style.display = "block";
+      historiaDiv.innerHTML =
+        "<strong>📜 Historia obliczeń:</strong><ul>" +
+        historiaList
+          .map((e) => {
+            // Obsługa starych wpisów (same stringi) – jeśli już masz jakieś zapisane
+            if (typeof e === "string") {
+              return `<li>${e}</li>`;
+            }
+            const lista = (e.pozycje || []).join(", ");
+            return `<li>✅ ${e.data} ${e.godzina} — ${e.suma} sztuk` +
+              (lista ? `<br>📦 Ordery: ${lista}` : "") +
+              `</li>`;
+          })
+          .join("") +
+        "</ul>";
+    }
+
+    function wyczysc() {
+      pokazModalPotwierdzenie(
+        "Czy na pewno chcesz wyczyścić dane?",
+        function (potwierdzone) {
+          if (!potwierdzone) return;
+          pozycje = [];
+          document.getElementById("nowaIlosc").value = "";
+          document.getElementById("listaPozycji").style.display = "none";
+          document.getElementById("wynik").style.display = "none";
+          zapiszSesje();
+          pokazPowiadomienie("Dane zostały wyczyszczone.");
+        }
+      );
+    }
+
+    function usunHistorie() {
+      pokazModalPotwierdzenie(
+        "Czy na pewno chcesz trwale usunąć historię?",
+        function (potwierdzone) {
+          if (!potwierdzone) return;
+          historiaList = [];
+          localStorage.removeItem("sztukiHistoria");
+          document.getElementById("historia").style.display = "none";
+          pokazPowiadomienie("Historia została usunięta.");
+        }
+      );
+    }
+
+    function kopiujHistorie() {
+      if (!historiaList || historiaList.length === 0) {
+        pokazPowiadomienie("Brak historii do skopiowania.");
+        return;
+      }
+
+      const tekst = historiaList
+        .map((e) => {
+          if (typeof e === "string") {
+            return e.replace(/<br>/g, "\n");
+          }
+          const lista = (e.pozycje || []).join(", ");
+          let line = `✅ ${e.data} ${e.godzina} — ${e.suma} sztuk`;
+          if (lista) {
+            line += `\n📦 Ordery: ${lista}`;
+          }
+          return line;
+        })
+        .join("\n\n");
+
+      navigator.clipboard
+        .writeText(tekst)
+        .then(() => pokazPowiadomienie("Historia została skopiowana do schowka."));
+    }
+
+    // --- AUTOZAPIS SESJI ---
+    function zapiszSesje() {
+      const dane = { pozycje };
+      try {
+        localStorage.setItem("sztukiSesja", JSON.stringify(dane));
+      } catch (e) {
+        console.error("Błąd zapisu sesji:", e);
+      }
+    }
+
+    function wczytajSesje() {
+      const dane = localStorage.getItem("sztukiSesja");
+      if (dane) {
+        try {
+          const parsed = JSON.parse(dane);
+          if (parsed.pozycje && Array.isArray(parsed.pozycje)) {
+            pozycje = parsed.pozycje;
+            pokazListePozycji();
+          }
+        } catch (e) {
+          console.error("Błąd odczytu sesji:", e);
+        }
+      }
+    }
+
+    setInterval(zapiszSesje, 3000);
+    window.addEventListener("beforeunload", zapiszSesje);
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("service-worker.js")
+          .then(() => console.log("✅ Service Worker zarejestrowany!"))
+          .catch((err) => console.error("❌ Błąd rejestracji SW:", err));
+      });
+    }
+  </script>
+
+  <style>
+    #modalPotwierdzenie {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    #modalOkno {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      max-width: 320px;
+      width: 90%;
+    }
+    #modalOkno h2 {
+      margin-top: 0;
+      color: #d9534f;
+      font-size: 20px;
+    }
+    #modalOkno p {
+      margin: 15px 0;
+      font-size: 16px;
+    }
+    .modal-przyciski {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .modal-przyciski button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .modal-tak {
+      background-color: #007aff;
+      color: white;
+    }
+    .modal-anuluj {
+      background-color: #ccc;
+      color: black;
+    }
+  </style>
+
+  <div id="modalPotwierdzenie">
+    <div id="modalOkno">
+      <h2>Uwaga</h2>
+      <p id="modalTresc"></p>
+      <div class="modal-przyciski">
+        <button class="modal-tak" onclick="modalPotwierdz()">Tak</button>
+        <button class="modal-anuluj" onclick="modalAnuluj()">Nie</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let modalCallback = null;
+
+    function pokazModalPotwierdzenie(tresc, callback) {
+      document.getElementById("modalTresc").textContent = tresc;
+      document.getElementById("modalPotwierdzenie").style.display = "flex";
+      modalCallback = callback;
+    }
+    function modalPotwierdz() {
+      document.getElementById("modalPotwierdzenie").style.display = "none";
+      if (modalCallback) modalCallback(true);
+    }
+    function modalAnuluj() {
+      document.getElementById("modalPotwierdzenie").style.display = "none";
+      if (modalCallback) modalCallback(false);
+    }
+  </script>
+</body>
+</html>
