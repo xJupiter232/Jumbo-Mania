@@ -16,6 +16,9 @@
       background: #f2f2f2;
       max-width: 480px;
       margin: auto;
+      min-height: 100vh; /* poprawa na smartfonach */
+      display: flex;
+      flex-direction: column;
     }
     h1 { text-align: center; }
     label {
@@ -148,15 +151,15 @@
 
     function dodajPozycje() {
       const input = document.getElementById("nowaIlosc");
-      const wartosc = parseFloat(input.value.trim().replace(",", "."));
+      const wartosc = parseInt(input.value.trim(), 10); // tylko liczby całkowite
 
-      if (!isNaN(wartosc) && wartosc > 0) {
+      if (Number.isInteger(wartosc) && wartosc > 0) {
         pozycje.push(wartosc);
         input.value = "";
         pokazListePozycji();
         zapiszSesje();
       } else {
-        pokazPowiadomienie("Wpisz poprawny numer orderu większy niż 0.");
+        pokazPowiadomienie("Wpisz poprawny numer orderu (tylko liczby całkowite większe niż 0).");
       }
     }
 
@@ -207,7 +210,6 @@
         minute: "2-digit",
       });
 
-      // 🔽 TERAZ zapisujemy pełne dane: data, godzina, suma, lista ilości
       const entry = {
         data,
         godzina,
@@ -239,7 +241,6 @@
         "<strong>📜 Historia obliczeń:</strong><ul>" +
         historiaList
           .map((e) => {
-            // Obsługa starych wpisów (same stringi) – jeśli już masz jakieś zapisane
             if (typeof e === "string") {
               return `<li>${e}</li>`;
             }
@@ -305,7 +306,7 @@
         .then(() => pokazPowiadomienie("Historia została skopiowana do schowka."));
     }
 
-    // --- AUTOZAPIS SESJI ---
+    // --- AUTOZAPIS SESJI (na akcje, bez interwału) ---
     function zapiszSesje() {
       const dane = { pozycje };
       try {
@@ -330,7 +331,6 @@
       }
     }
 
-    setInterval(zapiszSesje, 3000);
     window.addEventListener("beforeunload", zapiszSesje);
   </script>
 
@@ -429,7 +429,3 @@
   </script>
 </body>
 </html>
-
-
-
-
